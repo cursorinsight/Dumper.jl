@@ -1,0 +1,7 @@
+name = "Dumper"
+uuid = "8642fa86-e71c-4b93-8618-293c1d7e5bde"
+authors = ["Cursor Insight <info@cursorinsight.com>"]
+version = "0.1.0"
+
+[compat]
+julia = "1.6"
