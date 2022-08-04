@@ -1,5 +1,7 @@
 # Dumper.jl
 
+[![CI](https://github.com/cursorinsight/Dumper.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/cursorinsight/Dumper.jl/actions/workflows/CI.yml)
+
 Dumper.jl is a Julia package that allows you to save the value of variables in
 files easily.
 
