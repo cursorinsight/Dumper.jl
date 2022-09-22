@@ -51,20 +51,25 @@ STATE() = _STATE
 """
     enable!()::Nothing
 
-Enable dump functionality. The dumped files will be saved in the directory set
-in the `DUMP` environmental variable or if it does not exists in a
-`dump-YYYYmmdd-HHMMSS"` directory with the current date and time.
+Enable dump functionality.
+
+If `enable!` has already been called previously, use the same directory as
+before. If it is called for the first time, save the dump files into the
+directory pointed to by the `DUMP` environment variable, or lacking that, into a
+directory named `dump-YYYYmmdd-HHMMSS`, using the current date and time.
 """
 function enable!()::Nothing
     _STATE.enabled = true
+    mkpath(_STATE.directory)
     return nothing
 end
 
 """
     enable!(directory::AbstractString)::Nothing
 
-Enable dump functionality. The dumped files will be saved in the given
-`directory`.
+Enable dump functionality.
+
+The dump files will be saved in the given `directory`.
 """
 function enable!(directory::AbstractString)::Nothing
     _STATE.directory = directory
@@ -94,10 +99,10 @@ Dump the value of a variable in a file if dump functionality is enabled.
 
 Possible arguments are:
   - `isabsolute`:   `true` if the path is absolute (default: `false`)
-  - `path`:         name of the dumped file (default: name of the variable)
+  - `path`:         name of the dump file (default: name of the variable)
   - `directory`:    save directory (default: enabled directory)
   - `mime`:         output format (default: `MIME("text/plain")`)
-  - `mode`:         writing mode of the dumped file (default: `"w"`)
+  - `mode`:         writing mode of the dump file (default: `"w"`)
 
 # Examples
 ```jldoctest
