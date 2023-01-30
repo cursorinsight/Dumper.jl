@@ -126,7 +126,7 @@ macro dump(variable::Symbol, arguments...)
         get(arguments, :path, string(variable))
     directory::CompileTime{String} =
         get(arguments, :directory, :($STATE().directory))
-    mime::CompileTime{String} =
+    mime::CompileTime{Union{MIME, String}} =
         get(arguments, :mime, :($STATE().mime))
     mode::CompileTime{String} =
         get(arguments, :mode, :($STATE().mode))
@@ -134,7 +134,7 @@ macro dump(variable::Symbol, arguments...)
     return quote
         if $STATE().enabled
             let _path = $isabsolute ? $path : joinpath($directory, $path)
-                $save(_path, $mime, $variable; $mode)
+                $save(_path, MIME($mime), $variable; $mode)
             end
         end
     end |> esc
