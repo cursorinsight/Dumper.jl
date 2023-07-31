@@ -35,14 +35,15 @@ using .Utilities: dump_directory, CompileTime
     enabled::Bool = false
     isabsolute::Bool = false
     mime::MIME = MIME("text/plain")
-    directory::String = get(ENV, "DUMP", dump_directory("."))
+    directory::String
     mode::String = "w"
 end
 
-const _STATE = State()
+const STATE = Ref{State}()
 
-# This is only for the dynamic macro expression
-STATE() = _STATE
+function __init__()
+    STATE[] = State(directory = get(ENV, "DUMP", dump_directory(".")))
+end
 
 ###-----------------------------------------------------------------------------
 ### Management API
@@ -59,8 +60,8 @@ directory pointed to by the `DUMP` environment variable, or lacking that, into a
 directory named `dump-YYYYmmdd-HHMMSS`, using the current date and time.
 """
 function enable!()::Nothing
-    _STATE.enabled = true
-    mkpath(_STATE.directory)
+    STATE[].enabled = true
+    mkpath(STATE[].directory)
     return nothing
 end
 
@@ -72,8 +73,8 @@ Enable dump functionality.
 The dump files will be saved in the given `directory`.
 """
 function enable!(directory::AbstractString)::Nothing
-    _STATE.directory = directory
-    mkpath(_STATE.directory)
+    STATE[].directory = directory
+    mkpath(STATE[].directory)
     enable!()
     return nothing
 end
@@ -84,7 +85,7 @@ end
 Disable dump functionality (i.e. saving the values of variables in files).
 """
 function disable!()::Nothing
-    _STATE.enabled = false
+    STATE[].enabled = false
     return nothing
 end
 
@@ -120,21 +121,24 @@ macro dump(variable::Symbol, arguments...)
         end
     end |> Dict
 
+    state::Symbol = gensym("state")
     isabsolute::CompileTime{Bool} =
-        get(arguments, :isabsolute, :($STATE().isabsolute))
+        get(arguments, :isabsolute, :($state.isabsolute))
     path::CompileTime{String} =
         get(arguments, :path, string(variable))
     directory::CompileTime{String} =
-        get(arguments, :directory, :($STATE().directory))
+        get(arguments, :directory, :($state.directory))
     mime::CompileTime{Union{MIME, String}} =
-        get(arguments, :mime, :($STATE().mime))
+        get(arguments, :mime, :($state.mime))
     mode::CompileTime{String} =
-        get(arguments, :mode, :($STATE().mode))
+        get(arguments, :mode, :($state.mode))
 
     return quote
-        if $STATE().enabled
-            let _path = $isabsolute ? $path : joinpath($directory, $path)
-                $save(_path, MIME($mime), $variable; $mode)
+        let $state = $STATE[]
+            if $state.enabled
+                let _path = $isabsolute ? $path : joinpath($directory, $path)
+                    $save(_path, MIME($mime), $variable; $mode)
+                end
             end
         end
     end |> esc
