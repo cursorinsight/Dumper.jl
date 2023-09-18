@@ -1,7 +1,7 @@
 name = "Dumper"
 uuid = "8642fa86-e71c-4b93-8618-293c1d7e5bde"
 authors = ["Cursor Insight <info@cursorinsight.com>"]
-version = "0.2.3"
+version = "0.2.4"
 
 [deps]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"

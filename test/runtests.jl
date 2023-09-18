@@ -46,7 +46,7 @@ using Dumper: enable!, disable!, @dump
         @dump x path="3.txt"
         @test !isfile("$directory/3.txt")
 
-        enable!("$directory/sub")
+        enable!(directory = "$directory/sub")
         @test isdir("$directory/sub")
 
         @dump x
@@ -73,7 +73,7 @@ end
     end
 
     mktempdir() do directory
-        enable!(directory)
+        enable!(; directory, isabsolute = false)
         @test isdir(directory)
 
         dump()
@@ -88,7 +88,7 @@ end
         @test isfile("$directory/x")
         @test readlines("$directory/x") != ["3"]
 
-        enable!("$directory/sub")
+        enable!("$directory/sub"; mode = "w")
         @test isdir("$directory/sub")
 
         dump()

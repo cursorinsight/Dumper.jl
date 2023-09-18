@@ -30,19 +30,18 @@ using .Utilities: dump_directory, CompileTime
 ### State
 ###-----------------------------------------------------------------------------
 
-# TODO maybe use some timestamped folder by default
 @kwdef mutable struct State
+    directory::String = ""
     enabled::Bool = false
     isabsolute::Bool = false
-    mime::MIME = MIME("text/plain")
-    directory::String
+    mime::String = "text/plain"
     mode::String = "w"
 end
 
-const STATE = Ref{State}()
+const STATE = State()
 
 function __init__()
-    STATE[] = State(directory = get(ENV, "DUMP", dump_directory(".")))
+    STATE.directory = get(ENV, "DUMP", dump_directory(pwd()))
 end
 
 ###-----------------------------------------------------------------------------
@@ -50,42 +49,46 @@ end
 ###-----------------------------------------------------------------------------
 
 """
-    enable!()::Nothing
+    enable!([directory::String]; kwargs...)
 
 Enable dump functionality.
 
-If `enable!` has already been called previously, use the same directory as
-before. If it is called for the first time, save the dump files into the
-directory pointed to by the `DUMP` environment variable, or lacking that, into a
-directory named `dump-YYYYmmdd-HHMMSS`, using the current date and time.
+The directory in which the files are dumped is the first valid of the following:
+
+1.  whatever is passed in the argument;
+
+2.  what was used when `enable!` was called previously;
+
+3.  what the `DUMP` environment variable points to;
+
+4.  a new directory named `dump-YYYYmmdd-HHMMSS`, using current date and time.
+
+All other parameters in the global state are preserved, unless specified in a
+keyword argument.
 """
-function enable!()::Nothing
-    STATE[].enabled = true
-    mkpath(STATE[].directory)
+function enable!(directory::String; kwargs...)::Nothing
+    enable!(; kwargs..., directory)
+    return nothing
+end
+
+function enable!(; kwargs...)::Nothing
+    for (k, v) in kwargs
+        (k ∈ fieldnames(State) && k != :enabled) ||
+            error("Unexpected keyword argument $(k)!")
+        setfield!(STATE, k, v)
+    end
+    mkpath(STATE.directory)
+    STATE.enabled = true
     return nothing
 end
 
 """
-    enable!(directory::AbstractString)::Nothing
-
-Enable dump functionality.
-
-The dump files will be saved in the given `directory`.
-"""
-function enable!(directory::AbstractString)::Nothing
-    STATE[].directory = directory
-    mkpath(STATE[].directory)
-    enable!()
-    return nothing
-end
-
-"""
-    disable!()::Nothing
+    disable!()
 
 Disable dump functionality (i.e. saving the values of variables in files).
 """
 function disable!()::Nothing
-    STATE[].enabled = false
+    STATE.enabled = false
     return nothing
 end
 
@@ -98,12 +101,12 @@ end
 
 Dump the value of a variable in a file if dump functionality is enabled.
 
-Possible arguments are:
-  - `isabsolute`:   `true` if the path is absolute (default: `false`)
-  - `path`:         name of the dump file (default: name of the variable)
-  - `directory`:    save directory (default: enabled directory)
-  - `mime`:         output format (default: `MIME("text/plain")`)
-  - `mode`:         writing mode of the dump file (default: `"w"`)
+Possible arguments are (defaults come from `Dumper.STATE`):
+  - `isabsolute`: whether the path is absolute or relative to `directory`;
+  - `path`:       name of the dump file (default: name of the variable);
+  - `directory`:  save directory;
+  - `mime`:       output format (MIME string);
+  - `mode`:       writing mode of the dump file.
 
 # Examples
 ```jldoctest
@@ -113,35 +116,29 @@ julia> @dump x path="two.txt"
 ```
 """
 macro dump(variable::Symbol, arguments...)
-    arguments::Dict = map(arguments) do argument
+    arguments::Dict{Symbol, Any} = map(arguments) do argument
         if @capture(argument, key_ = value_)
-            return key => value
+            return key => esc(value)
         else
             error("Invalid argument")
         end
-    end |> Dict
+    end |> Dict{Symbol, Any}
 
-    state::Symbol = gensym("state")
-    isabsolute::CompileTime{Bool} =
-        get(arguments, :isabsolute, :($state.isabsolute))
-    path::CompileTime{String} =
-        get(arguments, :path, string(variable))
-    directory::CompileTime{String} =
-        get(arguments, :directory, :($state.directory))
-    mime::CompileTime{Union{MIME, String}} =
-        get(arguments, :mime, :($state.mime))
-    mode::CompileTime{String} =
-        get(arguments, :mode, :($state.mode))
+    getarg(prop) = get(arguments, prop, :(getfield(STATE, $(QuoteNode(prop)))))
+
+    isabsolute::CompileTime{Bool}  = getarg(:isabsolute)
+    directory::CompileTime{String} = getarg(:directory)
+    mime::CompileTime{String}      = getarg(:mime)
+    mode::CompileTime{String}      = getarg(:mode)
+    path::CompileTime{String}      = get(arguments, :path, string(variable))
 
     return quote
-        let $state = $STATE[]
-            if $state.enabled
-                let _path = $isabsolute ? $path : joinpath($directory, $path)
-                    $save(_path, MIME($mime), $variable; $mode)
-                end
+        if STATE.enabled
+            let path = $isabsolute ? $path : joinpath($directory, $path)
+                save(path, MIME($mime), $(esc(variable)); mode = $mode)
             end
         end
-    end |> esc
+    end
 end
 
 ###-----------------------------------------------------------------------------
