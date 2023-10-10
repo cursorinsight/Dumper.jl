@@ -7,9 +7,17 @@ of variables in files.
 
 ## Installation
 
+Dumper.jl can be installed after adding Cursor Insight's [own registry][CIJR] to
+the Julia environment:
+
 ```julia
-julia>]
-pkg> add https://github.com/cursorinsight/Dumper.jl
+julia> ]
+pkg> registry add https://github.com/cursorinsight/julia-registry
+     Cloning registry from "https://github.com/cursorinsight/julia-registry"
+       Added registry `CursorInsightJuliaRegistry` to
+       `~/.julia/registries/CursorInsightJuliaRegistry`
+
+pkg> add Dumper
 ```
 
 ## Usage
@@ -71,3 +79,5 @@ disable!()
 
 @dump x                 # will not be saved
 ```
+
+[CIJR]: https://github.com/cursorinsight/julia-registry
